@@ -1,0 +1,28 @@
+{
+  "name": "simettric/wp-simple-orm",
+  "description": "Simple ORM for WordPress custom post types and the relations relations between them",
+  "keywords": ["wordpress"],
+  "homepage": "http://simettric.com",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Asier Marqués",
+      "email": "asier@simettric.com"
+    }
+  ],
+  "require": {
+    "php": ">=5.5.9",
+    "simettric/wp-query-builder": "dev-master"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "~4.0",
+    "johnpbloch/wordpress": "4.*"
+  },
+  "extra": {
+    "wordpress-install-dir": "vendor/automattic/wordpress"
+  },
+  "autoload": {
+    "psr-4": { "Simettric\\WPSimpleORM\\": "src/", "Simettric\\WPSimpleORM\\Test\\": "tests/" }
+  },
+  "minimum-stability": "dev"
+}
