@@ -30,7 +30,7 @@ abstract class AbstractEntity
     private $meta_prefix='sim_simple_orm';
 
     /**
-     * @var AbstractRepository
+     * @var BaseRepository
      */
     private $repository;
 
@@ -63,16 +63,10 @@ abstract class AbstractEntity
     public function setPost(\WP_Post $post)
     {
         $this->post = $post;
-        $this->hydrateFromPost($post);
-    }
-
-    public function hydrateFromPost(\WP_Post $post)
-    {
-
     }
 
 
-    public function setRepository(AbstractRepository $repository)
+    public function setRepository(BaseRepository $repository)
     {
         $this->repository = $repository;
     }
@@ -99,14 +93,6 @@ abstract class AbstractEntity
     public function getMetaPrefix()
     {
         return $this->meta_prefix;
-    }
-
-    /**
-     * @return array
-     */
-    public function getNotPersistedRelatedTo()
-    {
-        return $this->relatedTo;
     }
 
     /**
@@ -148,6 +134,11 @@ abstract class AbstractEntity
             update_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $field, $value);
     }
 
+    /**
+     * @param $entityName
+     * @param string $type
+     * @throws \Exception
+     */
     protected function configureRelation($entityName, $type=self::RELATION_MULTIPLE)
     {
         if($type != self::RELATION_MULTIPLE || $type != self::RELATION_SINGLE)
@@ -174,8 +165,10 @@ abstract class AbstractEntity
         if($this->relations[$entity_name]==static::RELATION_SINGLE)
         {
             $this->relatedTo[$entity_name] = $entity;
-            if($this->post)
+            if($this->post){
                 update_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->post->ID);
+            }
+
         }
 
         if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
@@ -183,6 +176,7 @@ abstract class AbstractEntity
             $this->relatedTo[$entity_name][$entity->getPost()->ID] = $entity;
 
             add_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->post->ID);
+            update_post_meta($entity->post->ID, $this->getMetaPrefix() ."_inv_". get_class($this), $this->getPost()->ID);
         }
 
         return $this;
@@ -202,12 +196,18 @@ abstract class AbstractEntity
 
         if($this->relations[$entity_name]==static::RELATION_SINGLE)
         {
-            get_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, true);
+            $post_id = get_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, true);
+            return new $entity_name(get_post($post_id));
         }
 
         if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
         {
-            get_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name);
+            if(!$this->repository)
+            {
+                $this->repository = new BaseRepository($entity_name);
+            }
+
+            return $this->repository->getMultipleRelated($this);
         }
 
     }
@@ -231,7 +231,8 @@ abstract class AbstractEntity
 
         if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
         {
-            get_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->getPost()->ID);
+            delete_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->getPost()->ID);
+            delete_post_meta($entity->post->ID, $this->getMetaPrefix() ."_inv_". get_class($this), $this->getPost()->ID);
         }
 
     }

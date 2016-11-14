@@ -9,8 +9,9 @@ namespace Simettric\WPSimpleORM;
 
 
 use Simettric\WPQueryBuilder\Builder;
+use Simettric\WPQueryBuilder\MetaQuery;
 
-abstract class AbstractRepository
+class BaseRepository
 {
 
     /**
@@ -60,6 +61,26 @@ abstract class AbstractRepository
             ->setOffset($offset);
 
         return $builder->getPosts();
+    }
+
+    public function getMultipleRelated(AbstractEntity $entity,
+                                       $orderBy='ID',
+                                       $orderDirection="DESC",
+                                       $limit=null,
+                                       $offset=0 )
+    {
+
+        $meta_key = $entity->getMetaPrefix() ."_inv_". get_class($entity);
+        $builder  = $this->createQueryBuilder()
+            ->addMetaQuery(MetaQuery::create($meta_key, $entity->getPost()->ID))
+            ->addOrderBy($orderBy)
+            ->setOrderDirection($orderDirection);
+
+        if(!$limit)
+            $builder->withAnyLimit();
+
+        return $builder->getPosts();
+
     }
 
 
