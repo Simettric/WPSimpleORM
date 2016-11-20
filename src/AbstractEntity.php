@@ -72,6 +72,10 @@ abstract class AbstractEntity
 
     abstract public function getPostType();
 
+    /**
+     * @param \WP_Post $post
+     * @return bool
+     */
     public static function isEntityPostType(\WP_Post $post)
     {
 
@@ -85,6 +89,21 @@ abstract class AbstractEntity
         {
             return false;
         }
+    }
+
+    /**
+     * @return string
+     */
+    public static function getEntityPostType()
+    {
+        $class_name = get_called_class();
+
+        /**
+         * @var $item AbstractEntity
+         */
+        $item       = new $class_name();
+        return $item->getPostType();
+
     }
 
     public function setPost(\WP_Post $post)
