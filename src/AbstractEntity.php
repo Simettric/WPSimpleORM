@@ -8,6 +8,8 @@
 namespace Simettric\WPSimpleORM;
 
 
+use Simettric\WPSimpleORM\Exception\IncorrectPostTypeException;
+
 abstract class AbstractEntity
 {
 
@@ -32,7 +34,7 @@ abstract class AbstractEntity
     /**
      * @var BaseRepository
      */
-    private $repository;
+    protected $repository;
 
 
     private $relations=array();
@@ -44,7 +46,7 @@ abstract class AbstractEntity
     public function __construct(\WP_Post $post=null)
     {
         if($post && $post->post_type != $this->getPostType())
-            throw new \Exception(get_class($this) . ' must to be related to a WP_Post with a "' . $this->getPostType().'" post_type');
+            throw new IncorrectPostTypeException(get_class($this) . ' must to be related to a WP_Post with a "' . $this->getPostType().'" post_type');
 
 
 
@@ -55,10 +57,35 @@ abstract class AbstractEntity
         }
     }
 
+    public function getId()
+    {
+        return $this->post->ID;
+    }
+
+    public function getTitle()
+    {
+        return $this->post->post_title;
+    }
+
 
     abstract public function configure();
 
     abstract public function getPostType();
+
+    public static function isEntityPostType(\WP_Post $post)
+    {
+
+        try{
+
+            $class_name = get_called_class();
+            new $class_name($post);
+            return true;
+
+        }catch (IncorrectPostTypeException $e)
+        {
+            return false;
+        }
+    }
 
     public function setPost(\WP_Post $post)
     {
@@ -141,7 +168,7 @@ abstract class AbstractEntity
      */
     protected function configureRelation($entityName, $type=self::RELATION_MULTIPLE)
     {
-        if($type != self::RELATION_MULTIPLE || $type != self::RELATION_SINGLE)
+        if(($type != self::RELATION_MULTIPLE) && ($type != self::RELATION_SINGLE))
         {
             throw new \Exception('Unexpected relation type');
         }
