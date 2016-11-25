@@ -1,8 +1,8 @@
 <?php
 /**
- * Created by Asier Marqués <asiermarques@gmail.com>
- * Date: 14/11/16
- * Time: 17:17
+ *
+ *
+ * @author Asier Marqués <asiermarques@gmail.com>
  */
 
 namespace Simettric\WPSimpleORM;
@@ -10,11 +10,10 @@ namespace Simettric\WPSimpleORM;
 
 use Simettric\WPSimpleORM\Exception\IncorrectPostTypeException;
 
-abstract class AbstractEntity
+abstract class AbstractEntity implements WordPressEntityInterface, EntityInterface
 {
 
-    const RELATION_SINGLE   = 'single';
-    const RELATION_MULTIPLE = 'multiple';
+
 
     /**
      * @var \WP_Post | null
@@ -45,10 +44,6 @@ abstract class AbstractEntity
 
     public function __construct(\WP_Post $post=null)
     {
-        if($post && $post->post_type != $this->getPostType())
-            throw new IncorrectPostTypeException(get_class($this) . ' must to be related to a WP_Post with a "' . $this->getPostType().'" post_type');
-
-
 
         $this->configure();
 
@@ -70,7 +65,11 @@ abstract class AbstractEntity
 
     abstract public function configure();
 
-    abstract public function getPostType();
+
+    public function getPostType()
+    {
+        return static::getEntityPostType();
+    }
 
     /**
      * @param \WP_Post $post
@@ -91,23 +90,13 @@ abstract class AbstractEntity
         }
     }
 
-    /**
-     * @return string
-     */
-    public static function getEntityPostType()
-    {
-        $class_name = get_called_class();
 
-        /**
-         * @var $item AbstractEntity
-         */
-        $item       = new $class_name();
-        return $item->getPostType();
-
-    }
 
     public function setPost(\WP_Post $post)
     {
+        if($post->post_type != $this->getPostType())
+            throw new IncorrectPostTypeException(get_class($this) . ' must to be related to a WP_Post with a "' . $this->getPostType().'" post_type');
+
         $this->post = $post;
     }
 
@@ -253,7 +242,7 @@ abstract class AbstractEntity
                 $this->repository = new BaseRepository($entity_name);
             }
 
-            return $this->repository->getMultipleRelated($this);
+            return $this->repository->getMultipleRelated($this, $entity_name);
         }
 
     }

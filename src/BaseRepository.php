@@ -1,8 +1,9 @@
 <?php
 /**
- * Created by Asier Marqués <asiermarques@gmail.com>
- * Date: 14/11/16
- * Time: 17:17
+ * This is the default repository used to perform queries, you can extend it in
+ * in order to add new methods and properties
+ *
+ * @author Asier Marqués <asiermarques@gmail.com>
  */
 
 namespace Simettric\WPSimpleORM;
@@ -63,15 +64,26 @@ class BaseRepository
         return $builder->getPosts();
     }
 
-    public function getMultipleRelated(AbstractEntity $entity,
-                                       $orderBy='ID',
-                                       $orderDirection="DESC",
-                                       $limit=null,
-                                       $offset=0 )
+    /**
+     * @param AbstractEntity $entity
+     * @param $entityRelatedTo
+     * @param string $orderBy
+     * @param string $orderDirection
+     * @param null $limit
+     * @param int $offset
+     * @return array AbstractEntity[]
+     */
+    public function getMultipleRelated( AbstractEntity $entity,
+                                        $entityRelatedTo,
+                                        $orderBy='ID',
+                                        $orderDirection="DESC",
+                                        $limit=null,
+                                        $offset=0 )
     {
 
-        $meta_key = $entity->getMetaPrefix() ."_inv_". get_class($entity);
+        $meta_key = $this->getMetaKey($entity->getMetaPrefix(), get_class($entity), true);
         $builder  = $this->createQueryBuilder()
+            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
             ->addMetaQuery(MetaQuery::create($meta_key, $entity->getPost()->ID))
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection);
@@ -79,8 +91,77 @@ class BaseRepository
         if(!$limit)
             $builder->withAnyLimit();
 
-        return $builder->getPosts();
+        //die(var_dump($builder->getWPQuery()->request));
 
+        $posts = $builder->getPosts();
+
+        $items = array();
+        foreach ($posts as $post)
+        {
+            $items[] = new $entityRelatedTo($post);
+        }
+
+        return $items;
+
+    }
+
+
+    /**
+     * @param AbstractEntity $entity
+     * @return $this
+     * @throws \Exception
+     */
+    function addRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
+    {
+        $entity_name = get_class($entityRelatedTo);
+        $relations = $entity->getConfiguredRelations();
+        if(!isset($relations[$entity_name]))
+        {
+            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+        }
+
+        if($relations[$entity_name]==WordPressEntityInterface::RELATION_SINGLE)
+        {
+            if($entity->getPost()){
+                update_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            }
+
+        }
+
+        if($relations[$entity_name]==WordPressEntityInterface::RELATION_MULTIPLE)
+        {
+            add_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            update_post_meta($entityRelatedTo->getPost()->ID,  $this->getMetaKey($entity->getMetaPrefix(), get_class($entity),true), $entity->getPost()->ID);
+        }
+
+    }
+
+    function removeRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
+    {
+        $entity_name = get_class($entityRelatedTo);
+        $relations = $entity->getConfiguredRelations();
+        if(!isset($relations[$entity_name]))
+        {
+            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+        }
+
+        if($relations[$entity_name]==WordPressEntityInterface::RELATION_SINGLE)
+        {
+            delete_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name));
+        }
+
+        if($relations[$entity_name]==WordPressEntityInterface::RELATION_MULTIPLE)
+        {
+            delete_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            delete_post_meta($entityRelatedTo->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), get_class($entity), true), $entity->getPost()->ID);
+        }
+
+    }
+
+
+    protected function getMetaKey($prefix, $entityName, $inv=false)
+    {
+        return $prefix . ($inv ? "_inv_" : "_") . str_replace('\\', '', $entityName);
     }
 
 
@@ -92,5 +173,7 @@ class BaseRepository
     {
         return new Builder();
     }
+
+
 
 }
