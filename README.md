@@ -50,6 +50,7 @@ USAGE
     $post = get_post(1);
     
     $person = new Person($post);
+    $person->setAddress("13 Rue del Percebe");
     
     echo $person->getId();
     echo $person->getName();
