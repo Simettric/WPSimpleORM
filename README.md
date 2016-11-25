@@ -39,6 +39,11 @@ USAGE
         {
             return 'person';
         }
+        
+        public function configure()
+        {
+            
+        }
     
     }
     
