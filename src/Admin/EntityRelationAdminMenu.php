@@ -38,6 +38,12 @@ class EntityRelationAdminMenu
 
     }
 
+    public function getPageName()
+    {
+        $post_type = call_user_func(array(get_class($this->entityInstance), 'getEntityPostType')) ;
+        return $post_type .'-relations';
+    }
+
     public function onAdminMenu()
     {
 
@@ -46,7 +52,7 @@ class EntityRelationAdminMenu
             sprintf(__("%s relations", 'sim-wporm'), get_class($this->entityInstance)),
             sprintf(__("%s relations", 'sim-wporm'), get_class($this->entityInstance)),
             'manage_options',
-            'post-relations',
+            $this->getPageName(),
             array($this, 'view')
         );
 
@@ -80,7 +86,7 @@ class EntityRelationAdminMenu
                     wp_die($e->getMessage());
                 }
 
-                $base_link = "/wp-admin/index.php?page=post-relations&post=".$post->ID ."&rel=" .$_GET["rel"];
+                $base_link = "/wp-admin/index.php?page=".$this->getPageName()."&post=".$post->ID ."&rel=" .$_GET["rel"];
 
                 include __DIR__ . '/../Views/Admin/relation_list.php';
 
@@ -102,7 +108,7 @@ class EntityRelationAdminMenu
 
             $screen = get_current_screen();
 
-            if($screen->id == "dashboard_page_post-relations") {
+            if($screen->id == ("dashboard_page_" . $this->getPageName())) {
 
                 if (isset($_GET["post"]) && isset($_GET["rel"])) {
                     $post = get_post($_GET["post"]);
@@ -127,7 +133,7 @@ class EntityRelationAdminMenu
 
     public function onAdminInit()
     {
-        if (isset($_GET["page"]) && $_GET["page"]=="post-relations") {
+        if (isset($_GET["page"]) && $_GET["page"]==$this->getPageName()) {
 
             if(isset($_POST["sim_orm_new_rel_id"]) || isset($_GET["sim_orm_remove_rel"]))
             {
@@ -175,7 +181,7 @@ class EntityRelationAdminMenu
         $repository = new BaseRepository(get_class($this->entityInstance));
         $repository->addRelatedTo($rel, $this->entityInstance);
 
-        wp_redirect("/wp-admin/index.php?page=post-relations&post=".$this->entityInstance->getPost()->ID ."&rel=" .$_GET["rel"]);
+        wp_redirect("/wp-admin/index.php?page=".$this->getPageName()."&post=".$this->entityInstance->getPost()->ID ."&rel=" .$_GET["rel"]);
         exit();
     }
 
@@ -185,7 +191,7 @@ class EntityRelationAdminMenu
         $repository->removeRelatedTo($rel, $this->entityInstance);
 
 
-        wp_redirect("/wp-admin/index.php?page=post-relations&post=".$this->entityInstance->getPost()->ID ."&rel=" .$_GET["rel"]);
+        wp_redirect("/wp-admin/index.php?page=".$this->getPageName()."&post=".$this->entityInstance->getPost()->ID ."&rel=" .$_GET["rel"]);
         exit();
     }
 
