@@ -102,7 +102,7 @@ USAGE
         $person->removeVideo($video);
     
 
-### Show relationships the meta box and admin page in wp-admin
+### Show the relationships meta box and admin page in wp-admin
 
         //functions.php or your a Plugin
         
