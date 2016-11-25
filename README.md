@@ -110,7 +110,7 @@ USAGE
 
 ### Show the relationships meta box and admin page in wp-admin
 
-        //functions.php or your a Plugin
+        //functions.php or in your plugin (outside of any hook)
         
         $relationsMenu = new EntityRelationsHooks(Person::class);
         $relationsMenu->registerHooks();
