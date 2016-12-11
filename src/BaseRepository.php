@@ -107,6 +107,29 @@ class BaseRepository
 
 
     /**
+     * @param AbstractEntity $item
+     * @param $entity_name
+     *
+     * @return AbstractEntity|null
+     */
+    public function getSingleRelated(AbstractEntity $item, $entity_name)
+    {
+
+        $relations = $item->getConfiguredRelations();
+        if(!isset($relations[$entity_name]))
+        {
+            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+        }
+
+
+        if($post_id = get_post_meta($item->getPost()->ID, $this->getMetaKey($item->getMetaPrefix(), $entity_name), true))
+            return new $entity_name(get_post($post_id));
+
+        return null;
+    }
+
+
+    /**
      * @param AbstractEntity $entity
      * @return $this
      * @throws \Exception
@@ -133,6 +156,8 @@ class BaseRepository
             add_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
             update_post_meta($entityRelatedTo->getPost()->ID,  $this->getMetaKey($entity->getMetaPrefix(), get_class($entity),true), $entity->getPost()->ID);
         }
+
+        return $this;
 
     }
 

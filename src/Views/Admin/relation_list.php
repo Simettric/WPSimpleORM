@@ -4,13 +4,14 @@
 
 
 
+    <?php if($relation_type != \Simettric\WPSimpleORM\AbstractEntity::RELATION_SINGLE || !count($items)){ ?>
     <form id="new_rel_form" action="" method="post">
 
         <h2>Add new relation</h2>
         <table>
             <tr>
                 <th>
-                    <input id="new_rel" type="text" value="" placeholder="search entity by title">
+                    <input id="new_rel" type="search"  autocomplete="off" value="" placeholder="search entity by title">
                     <input type="hidden" id="sim_orm_new_rel_id" name="sim_orm_new_rel_id" value="">
                 </th>
                 <td>
@@ -22,6 +23,7 @@
 
 
     </form>
+    <?php } ?>
 
     <table class="wp-list-table widefat fixed striped posts">
         <thead>

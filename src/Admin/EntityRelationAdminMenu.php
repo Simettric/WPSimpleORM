@@ -76,9 +76,37 @@ class EntityRelationAdminMenu
                      * @var $item AbstractEntity
                      */
                     $this->entityInstance->setPost($post);
+                    $relations = $this->entityInstance->getConfiguredRelations();
 
-                    $repository = new BaseRepository(get_class($this->entityInstance));
-                    $items      = $repository->getMultipleRelated($this->entityInstance, $relEntityName);
+
+                    if(isset($relations[$relEntityName]))
+                    {
+
+                        $relation_type = $relations[$relEntityName];
+                        $repository = new BaseRepository(get_class($this->entityInstance));
+
+                        if($relation_type == AbstractEntity::RELATION_SINGLE)
+                        {
+                            $item      = $repository->getSingleRelated($this->entityInstance, $relEntityName);
+                            if($item){
+                                $items = array($item);
+                            }else{
+                                $items = array();
+                            }
+                        }else{
+                            $items      = $repository->getMultipleRelated($this->entityInstance, $relEntityName);
+                        }
+
+                        $base_link = "/wp-admin/index.php?page=".$this->getPageName()."&post=".$post->ID ."&rel=" .$_GET["rel"];
+
+                        include __DIR__ . '/../Views/Admin/relation_list.php';
+
+                        return;
+
+                    }
+
+
+
 
 
                 }catch (IncorrectPostTypeException $e)
@@ -86,13 +114,12 @@ class EntityRelationAdminMenu
                     wp_die($e->getMessage());
                 }
 
-                $base_link = "/wp-admin/index.php?page=".$this->getPageName()."&post=".$post->ID ."&rel=" .$_GET["rel"];
 
-                include __DIR__ . '/../Views/Admin/relation_list.php';
 
-            }else{
-                wp_die("Related entity {$relEntityName} does not exist");
             }
+
+            wp_die("Related entity {$relEntityName} does not exist");
+
 
 
             
@@ -111,6 +138,8 @@ class EntityRelationAdminMenu
             if($screen->id == ("dashboard_page_" . $this->getPageName())) {
 
                 if (isset($_GET["post"]) && isset($_GET["rel"])) {
+
+
                     $post = get_post($_GET["post"]);
 
                     $relEntityName = $_GET["rel"];

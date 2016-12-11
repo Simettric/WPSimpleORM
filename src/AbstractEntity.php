@@ -25,10 +25,7 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      */
     private $meta_fields=array();
 
-    /**
-     * @var string
-     */
-    private $meta_prefix='sim_simple_orm';
+
 
     /**
      * @var BaseRepository
@@ -127,7 +124,12 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      */
     public function getMetaPrefix()
     {
-        return $this->meta_prefix;
+        return static::getORMMetaPrefix();
+    }
+
+    public static function getORMMetaPrefix()
+    {
+        return 'sim_simple_orm';
     }
 
     /**
