@@ -56,7 +56,8 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
 
     public function getTitle()
     {
-        return $this->post->post_title;
+
+        return $this->post ? $this->post->post_title : "";
     }
 
 
@@ -149,6 +150,8 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
 
         if(isset($this->meta_fields[$field]))
             return $this->meta_fields[$field];
+
+        if(!$this->post) return;
 
         if($field_value = get_post_meta($this->post->ID, $this->getMetaPrefix()."_".$field, true))
         {
