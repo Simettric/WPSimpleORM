@@ -30,7 +30,7 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
     /**
      * @var BaseRepository
      */
-    protected $repository;
+    private $repository;
 
 
     private $relations=array();
@@ -172,6 +172,19 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
 
         if($this->post)
             update_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $field, $value);
+    }
+
+    /**
+     * @return BaseRepository
+     */
+    protected function getRepository()
+    {
+        if(!$this->repository)
+        {
+            $this->repository = new BaseRepository(get_class($this));
+        }
+
+        return $this->repository;
     }
 
     /**
