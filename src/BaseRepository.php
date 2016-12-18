@@ -91,8 +91,6 @@ class BaseRepository
         if(!$limit)
             $builder->withAnyLimit();
 
-        //die(var_dump($builder->getWPQuery()->request));
-
         $posts = $builder->getPosts();
 
         $items = array();

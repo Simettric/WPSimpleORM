@@ -259,8 +259,7 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
             {
                 $this->repository = new BaseRepository($entity_name);
             }
-
-            return $this->repository->getMultipleRelated($this, $entity_name);
+            return $this->repository->getMultipleRelated($this, $entity_name, 'ID', 'DESC', null);
         }
 
     }
