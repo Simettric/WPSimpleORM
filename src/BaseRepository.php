@@ -184,9 +184,14 @@ class BaseRepository
 
     protected function getMetaKey($prefix, $entityName, $inv=false)
     {
-        return $prefix . ($inv ? "_inv_" : "_") . str_replace('\\', '', $entityName);
+        return static::getRelationMetaKey($prefix, $entityName, $inv);
     }
 
+
+    static function getRelationMetaKey($entityPrefix, $relEntityName, $inv=false)
+    {
+        return $entityPrefix . ($inv ? "_inv_" : "_") . str_replace('\\', '', $relEntityName);
+    }
 
 
     /**
