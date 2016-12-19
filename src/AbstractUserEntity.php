@@ -10,7 +10,7 @@ namespace Simettric\WPSimpleORM;
 
 use Simettric\WPSimpleORM\Exception\IncorrectPostTypeException;
 
-abstract class AbstractUserEntity implements WordPressEntityInterface, EntityInterface
+abstract class AbstractUserEntity
 {
 
 
@@ -138,13 +138,6 @@ abstract class AbstractUserEntity implements WordPressEntityInterface, EntityInt
         return 'sim_simple_orm';
     }
 
-    /**
-     * @return array
-     */
-    public function getConfiguredRelations()
-    {
-        return $this->relations;
-    }
 
     /**
      * @param $field
