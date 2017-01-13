@@ -37,6 +37,8 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
 
     private $relatedTo=array();
 
+    private $inversedRelated=array();
+
 
 
     public function __construct(\WP_Post $post=null)
@@ -203,6 +205,21 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
     }
 
     /**
+     * @param $entityName
+     * @param string $type
+     * @throws \Exception
+     */
+    protected function configureInverseRelation($entityName, $type=self::RELATION_MULTIPLE)
+    {
+        if(($type != self::RELATION_MULTIPLE) && ($type != self::RELATION_SINGLE))
+        {
+            throw new \Exception('Unexpected relation type');
+        }
+
+        $this->inversedRelated[$entityName] = $type;
+    }
+
+    /**
      * @param AbstractEntity $entity
      * @return $this
      * @throws \Exception
@@ -261,6 +278,55 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
             }
             return $this->repository->getMultipleRelated($this, $entity_name, 'ID', 'DESC', null);
         }
+
+    }
+
+
+    /**
+     * @param $entity_name
+     * @return array|null
+     * @throws \Exception
+     */
+    protected function getInverseRelated($entity_name)
+    {
+
+        if(!isset($this->inversedRelated[$entity_name]))
+        {
+            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+        }
+
+        /**
+         * @var $entity AbstractEntity
+         */
+        $entity = new $entity_name;
+        $meta_key = $entity->getMetaPrefix() ."_". get_class($this);
+
+        $posts = get_posts(array(
+            "meta_key" => $meta_key,
+            "meta_value" => $this->getPost()->ID
+        ));
+
+        if($this->inversedRelated[$entity_name]==static::RELATION_SINGLE)
+        {
+
+            if(!count($posts))
+                return null;
+
+            return new $entity_name($posts[0]);
+        }
+
+        if($this->inversedRelated[$entity_name]==static::RELATION_MULTIPLE)
+        {
+            $items = array();
+            foreach($posts as $post)
+            {
+                $items[] = new $entity_name[$post];
+            }
+
+            return $items;
+        }
+
+        return null;
 
     }
 
