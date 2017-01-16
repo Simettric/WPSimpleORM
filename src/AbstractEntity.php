@@ -144,6 +144,14 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
     }
 
     /**
+     * @return array
+     */
+    public function getConfiguredInversedRelations()
+    {
+        return $this->inversedRelated;
+    }
+
+    /**
      * @param $field
      * @return mixed|null
      */
@@ -226,109 +234,12 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      */
     protected function addRelatedTo(AbstractEntity $entity)
     {
-        $entity_name = get_class($entity);
-        if(!isset($this->relations[$entity_name]))
-        {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
-        }
 
-        if($this->relations[$entity_name]==static::RELATION_SINGLE)
-        {
-            $this->relatedTo[$entity_name] = $entity;
-            if($this->post){
-                update_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->post->ID);
-            }
-
-        }
-
-        if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
-        {
-            $this->relatedTo[$entity_name][$entity->getPost()->ID] = $entity;
-
-            add_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->post->ID);
-            update_post_meta($entity->post->ID, $this->getMetaPrefix() ."_inv_". get_class($this), $this->getPost()->ID);
-        }
+        $this->getRepository()->addRelatedTo($entity, $this);
 
         return $this;
     }
 
-    /**
-     * @param $entity_name
-     * @throws \Exception
-     */
-    protected function getRelatedTo($entity_name)
-    {
-
-        if(!isset($this->relations[$entity_name]))
-        {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
-        }
-
-        if($this->relations[$entity_name]==static::RELATION_SINGLE)
-        {
-            $post_id = get_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, true);
-            return new $entity_name(get_post($post_id));
-        }
-
-        if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
-        {
-            if(!$this->repository)
-            {
-                $this->repository = new BaseRepository($entity_name);
-            }
-            return $this->repository->getMultipleRelated($this, $entity_name, 'ID', 'DESC', null);
-        }
-
-    }
-
-
-    /**
-     * @param $entity_name
-     * @return array|null
-     * @throws \Exception
-     */
-    protected function getInverseRelated($entity_name)
-    {
-
-        if(!isset($this->inversedRelated[$entity_name]))
-        {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
-        }
-
-        /**
-         * @var $entity AbstractEntity
-         */
-        $entity = new $entity_name;
-        $meta_key = $entity->getMetaPrefix() ."_". get_class($this);
-
-        $posts = get_posts(array(
-            "meta_key" => $meta_key,
-            "meta_value" => $this->getPost()->ID
-        ));
-
-        if($this->inversedRelated[$entity_name]==static::RELATION_SINGLE)
-        {
-
-            if(!count($posts))
-                return null;
-
-            return new $entity_name($posts[0]);
-        }
-
-        if($this->inversedRelated[$entity_name]==static::RELATION_MULTIPLE)
-        {
-            $items = array();
-            foreach($posts as $post)
-            {
-                $items[] = new $entity_name[$post];
-            }
-
-            return $items;
-        }
-
-        return null;
-
-    }
 
     /**
      * @param AbstractEntity $entity
@@ -336,22 +247,8 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      */
     protected function removeRelatedTo(AbstractEntity $entity)
     {
-        $entity_name = get_class($entity);
-        if(!isset($this->relations[$entity_name]))
-        {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
-        }
 
-        if($this->relations[$entity_name]==static::RELATION_SINGLE)
-        {
-            delete_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name);
-        }
-
-        if($this->relations[$entity_name]==static::RELATION_MULTIPLE)
-        {
-            delete_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $entity_name, $entity->getPost()->ID);
-            delete_post_meta($entity->post->ID, $this->getMetaPrefix() ."_inv_". get_class($this), $this->getPost()->ID);
-        }
+        $this->getRepository()->removeRelatedTo($entity, $this);
 
     }
 

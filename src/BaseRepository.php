@@ -81,10 +81,29 @@ class BaseRepository
                                         $offset=0 )
     {
 
-        $meta_key = $this->getMetaKey($entity->getMetaPrefix(), get_class($entity), true);
-        $builder  = $this->createQueryBuilder()
-            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
-            ->addMetaQuery(MetaQuery::create($meta_key, $entity->getPost()->ID))
+        $repository        = $this;
+        $relations         = $entity->getConfiguredRelations();
+        $inversedRelations = $entity->getConfiguredInversedRelations();
+
+        $entityInstance    = $entity;
+        $relatedClass      = $entityRelatedTo;
+
+        if(!isset($relations[$entityRelatedTo]))
+        {
+            if(isset($inversedRelations[$entityRelatedTo]))
+            {
+                $repository = new BaseRepository($entityRelatedTo);
+                $entityInstance = new $entityRelatedTo;
+                $relatedClass   = get_class($entity);
+            }else{
+                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
+            }
+        }
+
+        $meta_key = $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entityInstance), true);
+        $builder  = $repository->createQueryBuilder()
+            ->addPostType(call_user_func(array($relatedClass, 'getEntityPostType')))
+            ->addMetaQuery(MetaQuery::create($meta_key, $entityInstance->getPost()->ID))
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection);
 
@@ -96,7 +115,7 @@ class BaseRepository
         $items = array();
         foreach ($posts as $post)
         {
-            $items[] = new $entityRelatedTo($post);
+            $items[] = new $relatedClass($post);
         }
 
         return $items;
@@ -119,9 +138,26 @@ class BaseRepository
             throw new \Exception('Relation with "'.$entity_name.'" is not configured');
         }
 
+        $relations         = $item->getConfiguredRelations();
+        $inversedRelations = $item->getConfiguredInversedRelations();
 
-        if($post_id = get_post_meta($item->getPost()->ID, $this->getMetaKey($item->getMetaPrefix(), $entity_name), true))
-            return new $entity_name(get_post($post_id));
+        $entityInstance    = $item;
+        $relatedClass      = $entity_name;
+
+        if(!isset($relations[$relatedClass]))
+        {
+            if(isset($inversedRelations[$relatedClass]))
+            {
+                $entityInstance = new $relatedClass;
+                $relatedClass   = get_class($item);
+            }else{
+                throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+            }
+        }
+
+
+        if($post_id = get_post_meta($entityInstance->getPost()->ID, $this->getMetaKey($entityInstance->getMetaPrefix(), $relatedClass), true))
+            return new $relatedClass(get_post($post_id));
 
         return null;
     }
@@ -134,25 +170,43 @@ class BaseRepository
      */
     function addRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
     {
-        $entity_name = get_class($entityRelatedTo);
-        $relations = $entity->getConfiguredRelations();
+
+
+        $repository        = $this;
+        $entity_name       = get_class($entityRelatedTo);
+        $relations         = $entity->getConfiguredRelations();
+        $inversedRelations = $entity->getConfiguredInversedRelations();
+
+        $entityInstance    = $entity;
+
         if(!isset($relations[$entity_name]))
         {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+            if(isset($inversedRelations[$entity_name]))
+            {
+                $repository      = new BaseRepository($entityRelatedTo);
+                $entityInstance  = $entityRelatedTo;
+                $entity_name     = get_class($entity);
+                $entityRelatedTo = $entity;
+                $type            = $inversedRelations[$entity_name];
+            }else{
+                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
+            }
+        }else{
+            $type  =  $relations[$entity_name];
         }
 
-        if($relations[$entity_name]==WordPressEntityInterface::RELATION_SINGLE)
+        if($type==WordPressEntityInterface::RELATION_SINGLE)
         {
-            if($entity->getPost()){
-                update_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            if($entityInstance->getPost()){
+                update_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
             }
 
         }
 
-        if($relations[$entity_name]==WordPressEntityInterface::RELATION_MULTIPLE)
+        if($type==WordPressEntityInterface::RELATION_MULTIPLE)
         {
-            add_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
-            update_post_meta($entityRelatedTo->getPost()->ID,  $this->getMetaKey($entity->getMetaPrefix(), get_class($entity),true), $entity->getPost()->ID);
+            add_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            update_post_meta($entityRelatedTo->getPost()->ID,  $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entity),true), $entityInstance->getPost()->ID);
         }
 
         return $this;
@@ -161,22 +215,38 @@ class BaseRepository
 
     function removeRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
     {
-        $entity_name = get_class($entityRelatedTo);
-        $relations = $entity->getConfiguredRelations();
+        $repository        = $this;
+        $entity_name       = get_class($entityRelatedTo);
+        $relations         = $entity->getConfiguredRelations();
+        $inversedRelations = $entity->getConfiguredInversedRelations();
+
+        $entityInstance    = $entity;
+
         if(!isset($relations[$entity_name]))
         {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+            if(isset($inversedRelations[$entity_name]))
+            {
+                $repository      = new BaseRepository($entityRelatedTo);
+                $entityInstance  = $entityRelatedTo;
+                $entity_name     = get_class($entity);
+                $entityRelatedTo = $entity;
+                $type            = $inversedRelations[$entity_name];
+            }else{
+                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
+            }
+        }else{
+            $type  =  $relations[$entity_name];
         }
 
-        if($relations[$entity_name]==WordPressEntityInterface::RELATION_SINGLE)
+        if($type==WordPressEntityInterface::RELATION_SINGLE)
         {
-            delete_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name));
+            delete_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name));
         }
 
-        if($relations[$entity_name]==WordPressEntityInterface::RELATION_MULTIPLE)
+        if($type==WordPressEntityInterface::RELATION_MULTIPLE)
         {
-            delete_post_meta($entity->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
-            delete_post_meta($entityRelatedTo->getPost()->ID, $this->getMetaKey($entity->getMetaPrefix(), get_class($entity), true), $entity->getPost()->ID);
+            delete_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
+            delete_post_meta($entityRelatedTo->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entityInstance), true), $entityInstance->getPost()->ID);
         }
 
     }
