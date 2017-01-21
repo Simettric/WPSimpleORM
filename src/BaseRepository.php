@@ -59,9 +59,17 @@ class BaseRepository
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection)
             ->setLimit($limit)
+            ->addPostType(call_user_func(array($this->entity_name, 'getEntityPostType')))
             ->setOffset($offset);
 
-        return $builder->getPosts();
+        $items = array();
+        $posts = $builder->getPosts();
+        foreach ($posts as $post)
+        {
+            $items[] = new $this->entity_name($post);
+        }
+
+        return $items;
     }
 
     /**
