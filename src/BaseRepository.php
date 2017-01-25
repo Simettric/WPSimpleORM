@@ -25,6 +25,29 @@ class BaseRepository
         $this->entity_name = $entity_name;
     }
 
+    public function createNew($title="", $content="")
+    {
+        /**
+         * @var $item AbstractEntity
+         */
+        $item = new $this->entity_name;
+
+        $post_id = wp_insert_post(array(
+            'post_type'    => $item->getPostType(),
+            'post_title'   => $title,
+            'post_content' => $content
+        ));
+
+        if($post_id instanceof \WP_Error)
+        {
+           throw new \Exception($post_id->get_error_message());
+        }
+
+        $item->setPost(get_post($post_id));
+
+        return $item;
+    }
+
     /**
      * @param $id
      * @return AbstractEntity|null
@@ -40,7 +63,6 @@ class BaseRepository
 
 
     /**
-     * todo: implement criteria
      * @param array $criteria
      * @param string $orderBy
      * @param string $orderDirection
@@ -80,9 +102,15 @@ class BaseRepository
                                   $offset=0 )
     {
 
+        /**
+         * @var $relatedTo AbstractEntity
+         */
+        $relatedTo = new $entityRelatedTo;
+
         $builder  = $this->createQueryBuilder()
-            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
+            ->addPostType($relatedTo->getPostType())
             ->addMetaQuery(MetaQuery::create($entity->getRelationMetaKey(), $entity->getPost()->ID))
+            ->setAnyPostStatus()
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection);
 
@@ -95,6 +123,7 @@ class BaseRepository
 
 
         $posts = $builder->getPosts();
+
 
         $items = array();
         foreach ($posts as $post)
@@ -116,6 +145,7 @@ class BaseRepository
         $builder  = $this->createQueryBuilder()
             ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
             ->addMetaQuery(MetaQuery::create($entity->getInverseRelationMetaKey(), $entity->getPost()->ID))
+            ->setAnyPostStatus()
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection);
 
@@ -146,9 +176,9 @@ class BaseRepository
          * @var $item AbstractEntity
          */
         $item = new $entityRelatedClass;
-        if($post = get_post_meta($entity->getPost()->ID, $item->getRelationMetaKey(), true))
+        if($post_id = get_post_meta($entity->getPost()->ID, $item->getRelationMetaKey(), true))
         {
-            $item->setPost($post);
+            $item->setPost(get_post($post_id));
             return $item;
         }
 
@@ -156,51 +186,54 @@ class BaseRepository
     }
 
 
-    public function getInversedRelatedItem( AbstractEntity $entity, $entityRelatedClass)
-    {
-        /**
-         * @var $item AbstractEntity
-         */
-        $item = new $entityRelatedClass;
-        if($post = get_post_meta($entity->getPost()->ID, $item->getInverseRelationMetaKey(), true))
-        {
-            $item->setPost($post);
-            return $item;
-        }
 
-        return null;
-    }
 
 
 
     public function addRelatedItem(AbstractEntity $item, AbstractEntity $itemRelated, $relType)
     {
 
+
         if($relType == AbstractEntity::ONE_TO_ONE)
         {
             update_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
-            update_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
             return;
         }
 
         if($relType == AbstractEntity::ONE_TO_MANY)
         {
-            add_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
-            update_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            update_post_meta($itemRelated->getPost()->ID, $item->getRelationMetaKey(), $item->getId());
             return;
         }
 
         if($relType == AbstractEntity::MANY_TO_ONE)
         {
             update_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
-            add_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
             return;
         }
 
         if($relType == AbstractEntity::MANY_TO_MANY)
         {
-            add_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
-            add_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            if(!count($this->createQueryBuilder()
+                ->addPostType($item->getPostType())
+                ->addMetaQuery(MetaQuery::create($itemRelated->getRelationMetaKey(), $itemRelated->getId()))
+                ->setAnyPostStatus()
+                ->inPostIDs(array($item->getPost()->ID))
+                ->getPosts()))
+            {
+                add_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+
+            }
+            if(!count($this->createQueryBuilder()
+                ->addPostType($itemRelated->getPostType())
+                ->addMetaQuery(MetaQuery::create($item->getRelationMetaKey(), $item->getId()))
+                ->setAnyPostStatus()
+                ->inPostIDs(array($itemRelated->getPost()->ID))
+                ->getPosts()))
+            {
+                add_post_meta($itemRelated->getPost()->ID, $item->getRelationMetaKey(), $item->getId());
+            }
+
             return;
         }
 
@@ -213,7 +246,6 @@ class BaseRepository
     {
 
         delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
-        delete_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
 
     }
 
@@ -226,7 +258,6 @@ class BaseRepository
         $itemRelated = new $itemRelatedClass;
 
         delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey());
-        delete_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey());
 
     }
 
@@ -261,15 +292,7 @@ class BaseRepository
             $type = $relations[$entity_name];
         }
 
-
-        if($inversed)
-        {
-            $this->addRelatedItem($entityRelated, $entity, $type);
-
-        }else{
-            $this->addRelatedItem($entity, $entityRelated, $type);
-        }
-
+        $this->addRelatedItem($entity, $entityRelated, $type);
 
         return null;
 
@@ -321,6 +344,8 @@ class BaseRepository
     {
         return $entityPrefix . ($inv ? "_inv_" : "_") . str_replace('\\', '', $relEntityName);
     }
+
+
 
 
     /**

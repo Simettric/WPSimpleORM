@@ -75,12 +75,12 @@ USAGE
             
             function addVideo(Video $item)
             {
-                return $this->repository->addRelatedItem($this, $item);
+                return $this->repository->addRelatedTo($this, $item);
             }
             
             function removeVideo(Video $item)
             {
-                return $this->repository->removeRelatedItem(this, $item);
+                return $this->repository->removeRelatedItem($this, $item);
             }
             
             static public function getEntityPostType()
@@ -105,17 +105,17 @@ USAGE
             
             function getPerson()
             {
-                return $this->repository->getInversedRelatedItem($this, Video::class);
+                return $this->repository->getRelatedItem($this, Video::class);
             }
             
             function setPerson(Person $item)
             {
-                return $this->repository->addRelatedItem($this, $item);
+                return $this->repository->addRelatedTo($item, $this);
             }
             
             function removePerson(Person $item)
             {
-                return $this->repository->removeRelatedItem(this, $item);
+                return $this->repository->removeRelatedItem($this, $item);
             }
             
             static public function getEntityPostType()

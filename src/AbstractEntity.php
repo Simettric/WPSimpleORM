@@ -13,8 +13,6 @@ use Simettric\WPSimpleORM\Exception\IncorrectPostTypeException;
 abstract class AbstractEntity implements WordPressEntityInterface, EntityInterface
 {
 
-
-
     /**
      * @var \WP_Post | null
      */
