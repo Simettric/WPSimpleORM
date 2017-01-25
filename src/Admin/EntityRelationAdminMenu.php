@@ -85,16 +85,16 @@ class EntityRelationAdminMenu
                         $relation_type = $relations[$relEntityName];
                         $repository = new BaseRepository(get_class($this->entityInstance));
 
-                        if($relation_type == AbstractEntity::RELATION_SINGLE)
+                        if($relation_type == AbstractEntity::ONE_TO_ONE || $relation_type == AbstractEntity::MANY_TO_ONE)
                         {
-                            $item      = $repository->getSingleRelated($this->entityInstance, $relEntityName);
+                            $item      = $repository->getRelatedItem($this->entityInstance, $relEntityName);
                             if($item){
                                 $items = array($item);
                             }else{
                                 $items = array();
                             }
                         }else{
-                            $items      = $repository->getMultipleRelated($this->entityInstance, $relEntityName);
+                            $items  = $repository->getRelatedItems($this->entityInstance, $relEntityName);
                         }
 
                         $base_link = "/wp-admin/index.php?page=".$this->getPageName()."&post=".$post->ID ."&rel=" .$_GET["rel"];

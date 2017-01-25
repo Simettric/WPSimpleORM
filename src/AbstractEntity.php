@@ -127,12 +127,38 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      */
     public function getMetaPrefix()
     {
-        return static::getORMMetaPrefix();
+        return static::getStaticMetaPrefix();
     }
 
-    public static function getORMMetaPrefix()
+    public function getRelationMetaKey()
     {
-        return 'sim_simple_orm';
+        return static::getStaticRelationMetaKey();
+    }
+
+    public function getInverseRelationMetaKey()
+    {
+        return static::getStaticInverseRelationMetaKey();
+    }
+
+
+    public static function getStaticMetaPrefix()
+    {
+        return 'sim_simple_orm_';
+    }
+
+    protected static function getMetaClassName()
+    {
+        return str_replace('\\', '', get_called_class());
+    }
+
+    public static function getStaticRelationMetaKey()
+    {
+        return self::getStaticMetaPrefix() . self::getMetaClassName();
+    }
+
+    public static function getStaticInverseRelationMetaKey()
+    {
+        return self::getStaticMetaPrefix() . "inv_" . self::getMetaClassName();
     }
 
     /**
@@ -202,9 +228,9 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      * @param string $type
      * @throws \Exception
      */
-    protected function configureRelation($entityName, $type=self::RELATION_MULTIPLE)
+    protected function configureRelation($entityName, $type=self::ONE_TO_MANY)
     {
-        if(($type != self::RELATION_MULTIPLE) && ($type != self::RELATION_SINGLE))
+        if((false === in_array($type, array(self::ONE_TO_MANY, self::ONE_TO_ONE, self::MANY_TO_ONE, self::MANY_TO_MANY))))
         {
             throw new \Exception('Unexpected relation type');
         }
@@ -217,9 +243,9 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
      * @param string $type
      * @throws \Exception
      */
-    protected function configureInverseRelation($entityName, $type=self::RELATION_MULTIPLE)
+    protected function configureInverseRelation($entityName, $type=self::ONE_TO_MANY)
     {
-        if(($type != self::RELATION_MULTIPLE) && ($type != self::RELATION_SINGLE))
+        if(false === in_array($type, array(self::ONE_TO_MANY, self::ONE_TO_ONE, self::MANY_TO_ONE, self::MANY_TO_MANY)))
         {
             throw new \Exception('Unexpected relation type');
         }

@@ -72,192 +72,243 @@ class BaseRepository
         return $items;
     }
 
-    /**
-     * @param AbstractEntity $entity
-     * @param $entityRelatedTo
-     * @param string $orderBy
-     * @param string $orderDirection
-     * @param null $limit
-     * @param int $offset
-     * @return array AbstractEntity[]
-     */
-    public function getMultipleRelated( AbstractEntity $entity,
-                                        $entityRelatedTo,
-                                        $orderBy='ID',
-                                        $orderDirection="DESC",
-                                        $limit=null,
-                                        $offset=0 )
+    public function getRelatedItems( AbstractEntity $entity,
+                                  $entityRelatedTo,
+                                  $orderBy='ID',
+                                  $orderDirection="DESC",
+                                  $limit=null,
+                                  $offset=0 )
     {
 
-        $repository        = $this;
-        $relations         = $entity->getConfiguredRelations();
-        $inversedRelations = $entity->getConfiguredInversedRelations();
-
-        $entityInstance    = $entity;
-        $relatedClass      = $entityRelatedTo;
-
-        if(!isset($relations[$entityRelatedTo]))
-        {
-            if(isset($inversedRelations[$entityRelatedTo]))
-            {
-                $repository = new BaseRepository($entityRelatedTo);
-                $entityInstance = new $entityRelatedTo;
-                $relatedClass   = get_class($entity);
-            }else{
-                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
-            }
-        }
-
-        $meta_key = $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entityInstance), true);
-        $builder  = $repository->createQueryBuilder()
-            ->addPostType(call_user_func(array($relatedClass, 'getEntityPostType')))
-            ->addMetaQuery(MetaQuery::create($meta_key, $entityInstance->getPost()->ID))
+        $builder  = $this->createQueryBuilder()
+            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
+            ->addMetaQuery(MetaQuery::create($entity->getRelationMetaKey(), $entity->getPost()->ID))
             ->addOrderBy($orderBy)
             ->setOrderDirection($orderDirection);
 
-        if(!$limit)
+        if(!$limit){
             $builder->withAnyLimit();
+        }else{
+            $builder->setLimit($limit)
+                ->setOffset($offset);
+        }
+
 
         $posts = $builder->getPosts();
 
         $items = array();
         foreach ($posts as $post)
         {
-            $items[] = new $relatedClass($post);
+            $items[] = new $entityRelatedTo($post);
         }
 
         return $items;
+    }
+
+    public function getInversedRelatedItems( AbstractEntity $entity,
+                                  $entityRelatedTo,
+                                  $orderBy='ID',
+                                  $orderDirection="DESC",
+                                  $limit=null,
+                                  $offset=0 )
+    {
+
+        $builder  = $this->createQueryBuilder()
+            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
+            ->addMetaQuery(MetaQuery::create($entity->getInverseRelationMetaKey(), $entity->getPost()->ID))
+            ->addOrderBy($orderBy)
+            ->setOrderDirection($orderDirection);
+
+        if(!$limit){
+            $builder->withAnyLimit();
+        }else{
+            $builder->setLimit($limit)
+                ->setOffset($offset);
+        }
+
+
+        $posts = $builder->getPosts();
+
+        $items = array();
+        foreach ($posts as $post)
+        {
+            $items[] = new $entityRelatedTo($post);
+        }
+
+        return $items;
+    }
+
+
+
+    public function getRelatedItem( AbstractEntity $entity, $entityRelatedClass)
+    {
+        /**
+         * @var $item AbstractEntity
+         */
+        $item = new $entityRelatedClass;
+        if($post = get_post_meta($entity->getPost()->ID, $item->getRelationMetaKey(), true))
+        {
+            $item->setPost($post);
+            return $item;
+        }
+
+        return null;
+    }
+
+
+    public function getInversedRelatedItem( AbstractEntity $entity, $entityRelatedClass)
+    {
+        /**
+         * @var $item AbstractEntity
+         */
+        $item = new $entityRelatedClass;
+        if($post = get_post_meta($entity->getPost()->ID, $item->getInverseRelationMetaKey(), true))
+        {
+            $item->setPost($post);
+            return $item;
+        }
+
+        return null;
+    }
+
+
+
+    public function addRelatedItem(AbstractEntity $item, AbstractEntity $itemRelated, $relType)
+    {
+
+        if($relType == AbstractEntity::ONE_TO_ONE)
+        {
+            update_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            update_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::ONE_TO_MANY)
+        {
+            add_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            update_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::MANY_TO_ONE)
+        {
+            update_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            add_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::MANY_TO_MANY)
+        {
+            add_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            add_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        throw new \Exception("Invalid relation type");
+
+    }
+
+
+    function removeRelatedItem(AbstractEntity $item, AbstractEntity $itemRelated)
+    {
+
+        delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+        delete_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey(), $item->getId());
+
+    }
+
+    function removeAllRelatedItems(AbstractEntity $item, $itemRelatedClass)
+    {
+
+        /**
+         * @var $itemRelated AbstractEntity
+         */
+        $itemRelated = new $itemRelatedClass;
+
+        delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey());
+        delete_post_meta($itemRelated->getPost()->ID, $item->getInverseRelationMetaKey());
 
     }
 
 
     /**
-     * @param AbstractEntity $item
-     * @param $entity_name
-     *
-     * @return AbstractEntity|null
+     * @param AbstractEntity $entityRelated
+     * @param AbstractEntity $entity
+     * @return null
+     * @throws \Exception
      */
-    public function getSingleRelated(AbstractEntity $item, $entity_name)
+    function addRelatedTo(AbstractEntity $entityRelated, AbstractEntity $entity)
     {
 
-        $relations = $item->getConfiguredRelations();
+        $entity_name       = get_class($entityRelated);
+        $relations         = $entity->getConfiguredRelations();
+        $inversedRelations = $entity->getConfiguredInversedRelations();
+
+
+        $inversed = false;
+
         if(!isset($relations[$entity_name]))
         {
-            throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+            if(isset($inversedRelations[$entity_name]))
+            {
+                $type     = $inversedRelations[$entity_name];
+                $inversed = true;
+
+            }else{
+                throw new \Exception('Relation with "'.$entity_name.'" is not configured');
+            }
+        }else{
+            $type = $relations[$entity_name];
         }
 
-        $relations         = $item->getConfiguredRelations();
-        $inversedRelations = $item->getConfiguredInversedRelations();
 
-        $entityInstance    = $item;
-        $relatedClass      = $entity_name;
-
-        if(!isset($relations[$relatedClass]))
+        if($inversed)
         {
-            if(isset($inversedRelations[$relatedClass]))
+            $this->addRelatedItem($entityRelated, $entity, $type);
+
+        }else{
+            $this->addRelatedItem($entity, $entityRelated, $type);
+        }
+
+
+        return null;
+
+    }
+
+    function removeRelatedTo(AbstractEntity $entityRelated, AbstractEntity $entity)
+    {
+        $entity_name       = get_class($entityRelated);
+        $relations         = $entity->getConfiguredRelations();
+        $inversedRelations = $entity->getConfiguredInversedRelations();
+
+
+        $inversed = false;
+
+        if(!isset($relations[$entity_name]))
+        {
+            if(isset($inversedRelations[$entity_name]))
             {
-                $entityInstance = new $relatedClass;
-                $relatedClass   = get_class($item);
+                $inversed = true;
+
             }else{
                 throw new \Exception('Relation with "'.$entity_name.'" is not configured');
             }
         }
 
 
-        if($post_id = get_post_meta($entityInstance->getPost()->ID, $this->getMetaKey($entityInstance->getMetaPrefix(), $relatedClass), true))
-            return new $relatedClass(get_post($post_id));
+        if($inversed)
+        {
+            $this->removeRelatedItem($entityRelated, $entity);
+
+        }else{
+            $this->removeRelatedItem($entity, $entityRelated);
+        }
+
 
         return null;
-    }
-
-
-    /**
-     * @param AbstractEntity $entity
-     * @return $this
-     * @throws \Exception
-     */
-    function addRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
-    {
-
-
-        $repository        = $this;
-        $entity_name       = get_class($entityRelatedTo);
-        $relations         = $entity->getConfiguredRelations();
-        $inversedRelations = $entity->getConfiguredInversedRelations();
-
-        $entityInstance    = $entity;
-
-        if(!isset($relations[$entity_name]))
-        {
-            if(isset($inversedRelations[$entity_name]))
-            {
-                $repository      = new BaseRepository($entityRelatedTo);
-                $entityInstance  = $entityRelatedTo;
-                $entity_name     = get_class($entity);
-                $entityRelatedTo = $entity;
-                $type            = $inversedRelations[$entity_name];
-            }else{
-                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
-            }
-        }else{
-            $type  =  $relations[$entity_name];
-        }
-
-        if($type==WordPressEntityInterface::RELATION_SINGLE)
-        {
-            if($entityInstance->getPost()){
-                update_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
-            }
-
-        }
-
-        if($type==WordPressEntityInterface::RELATION_MULTIPLE)
-        {
-            add_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
-            update_post_meta($entityRelatedTo->getPost()->ID,  $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entity),true), $entityInstance->getPost()->ID);
-        }
-
-        return $this;
 
     }
 
-    function removeRelatedTo(AbstractEntity $entityRelatedTo, AbstractEntity $entity)
-    {
-        $repository        = $this;
-        $entity_name       = get_class($entityRelatedTo);
-        $relations         = $entity->getConfiguredRelations();
-        $inversedRelations = $entity->getConfiguredInversedRelations();
-
-        $entityInstance    = $entity;
-
-        if(!isset($relations[$entity_name]))
-        {
-            if(isset($inversedRelations[$entity_name]))
-            {
-                $repository      = new BaseRepository($entityRelatedTo);
-                $entityInstance  = $entityRelatedTo;
-                $entity_name     = get_class($entity);
-                $entityRelatedTo = $entity;
-                $type            = $inversedRelations[$entity_name];
-            }else{
-                throw new \Exception('Relation with "'.$entityRelatedTo.'" is not configured');
-            }
-        }else{
-            $type  =  $relations[$entity_name];
-        }
-
-        if($type==WordPressEntityInterface::RELATION_SINGLE)
-        {
-            delete_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name));
-        }
-
-        if($type==WordPressEntityInterface::RELATION_MULTIPLE)
-        {
-            delete_post_meta($entityInstance->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), $entity_name), $entityRelatedTo->getPost()->ID);
-            delete_post_meta($entityRelatedTo->getPost()->ID, $repository->getMetaKey($entityInstance->getMetaPrefix(), get_class($entityInstance), true), $entityInstance->getPost()->ID);
-        }
-
-    }
 
 
     protected function getMetaKey($prefix, $entityName, $inv=false)

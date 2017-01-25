@@ -70,17 +70,17 @@ USAGE
             
             function getVideos($limit=null)
             {
-                return $this->repository->getMultipleRelated($this, Video::class, 'ID', "DESC", $limit);
+                return $this->repository->getRelatedItems($this, Video::class, 'ID', "DESC", $limit);
             }
             
             function addVideo(Video $item)
             {
-                return $this->repository->addRelatedTo($item, $this);
+                return $this->repository->addRelatedItem($this, $item);
             }
             
             function removeVideo(Video $item)
             {
-                return $this->repository->removeRelatedTo($item, $this);
+                return $this->repository->removeRelatedItem(this, $item);
             }
             
             static public function getEntityPostType()
@@ -90,7 +90,42 @@ USAGE
             
             public function configure()
             {
-                $this->configureRelation(Video::class, static::RELATION_MULTIPLE);
+                $this->configureRelation(Video::class, static::ONE_TO_MANY);
+            }
+        
+        }
+        
+        class Video extends AbstractEntity
+        {
+        
+            function getName()
+            {
+                $this->getTitle();
+            }
+            
+            function getPerson()
+            {
+                return $this->repository->getInversedRelatedItem($this, Video::class);
+            }
+            
+            function setPerson(Person $item)
+            {
+                return $this->repository->addRelatedItem($this, $item);
+            }
+            
+            function removePerson(Person $item)
+            {
+                return $this->repository->removeRelatedItem(this, $item);
+            }
+            
+            static public function getEntityPostType()
+            {
+                return 'video';
+            }
+            
+            public function configure()
+            {
+                $this->configureInverseRelation(Person::class, static::MANY_TO_ONE);
             }
         
         }
@@ -106,6 +141,14 @@ USAGE
         }
         
         $person->removeVideo($video);
+        
+        // also, you can operate in the reverse way as well
+        
+        $video->setPerson($person);
+        
+        echo $video->getPerson();
+        
+        $video->removePerson();
     
 
 ### Show the relationships meta box and admin page in wp-admin
