@@ -133,11 +133,6 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
         return static::getStaticRelationMetaKey();
     }
 
-    public function getInverseRelationMetaKey()
-    {
-        return static::getStaticInverseRelationMetaKey();
-    }
-
 
     public static function getStaticMetaPrefix()
     {
@@ -152,11 +147,6 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
     public static function getStaticRelationMetaKey()
     {
         return self::getStaticMetaPrefix() . self::getMetaClassName();
-    }
-
-    public static function getStaticInverseRelationMetaKey()
-    {
-        return self::getStaticMetaPrefix() . "inv_" . self::getMetaClassName();
     }
 
     /**
@@ -187,7 +177,7 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
 
         if(!$this->post) return;
 
-        if($field_value = get_post_meta($this->post->ID, $this->getMetaPrefix()."_".$field, true))
+        if($field_value = get_post_meta($this->post->ID, $this->getMetaPrefix().$field, true))
         {
             $this->set($field, $field_value);
             return $this->meta_fields[$field];
@@ -205,7 +195,7 @@ abstract class AbstractEntity implements WordPressEntityInterface, EntityInterfa
         $this->meta_fields[$field] = $value;
 
         if($this->post)
-            update_post_meta($this->getPost()->ID, $this->getMetaPrefix() ."_". $field, $value);
+            update_post_meta($this->getPost()->ID, $this->getMetaPrefix(). $field, $value);
     }
 
     /**

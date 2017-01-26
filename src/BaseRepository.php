@@ -134,39 +134,7 @@ class BaseRepository
         return $items;
     }
 
-    public function getInversedRelatedItems( AbstractEntity $entity,
-                                  $entityRelatedTo,
-                                  $orderBy='ID',
-                                  $orderDirection="DESC",
-                                  $limit=null,
-                                  $offset=0 )
-    {
 
-        $builder  = $this->createQueryBuilder()
-            ->addPostType(call_user_func(array($entityRelatedTo, 'getEntityPostType')))
-            ->addMetaQuery(MetaQuery::create($entity->getInverseRelationMetaKey(), $entity->getPost()->ID))
-            ->setAnyPostStatus()
-            ->addOrderBy($orderBy)
-            ->setOrderDirection($orderDirection);
-
-        if(!$limit){
-            $builder->withAnyLimit();
-        }else{
-            $builder->setLimit($limit)
-                ->setOffset($offset);
-        }
-
-
-        $posts = $builder->getPosts();
-
-        $items = array();
-        foreach ($posts as $post)
-        {
-            $items[] = new $entityRelatedTo($post);
-        }
-
-        return $items;
-    }
 
 
 
@@ -334,16 +302,7 @@ class BaseRepository
 
 
 
-    protected function getMetaKey($prefix, $entityName, $inv=false)
-    {
-        return static::getRelationMetaKey($prefix, $entityName, $inv);
-    }
 
-
-    static function getRelationMetaKey($entityPrefix, $relEntityName, $inv=false)
-    {
-        return $entityPrefix . ($inv ? "_inv_" : "_") . str_replace('\\', '', $relEntityName);
-    }
 
 
 
