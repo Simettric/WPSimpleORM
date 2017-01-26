@@ -4,10 +4,10 @@
 
 
 
-    <?php if($relation_type != \Simettric\WPSimpleORM\AbstractEntity::RELATION_SINGLE || !count($items)){ ?>
+    <?php if(false === in_array($relation_type, array(\Simettric\WPSimpleORM\AbstractEntity::MANY_TO_ONE, \Simettric\WPSimpleORM\AbstractEntity::ONE_TO_ONE))  || !count($items)){ ?>
     <form id="new_rel_form" action="" method="post">
 
-        <h2>Add new relation</h2>
+        <h2><?php __("Add new relation") ?></h2>
         <table>
             <tr>
                 <th>
