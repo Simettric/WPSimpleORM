@@ -210,10 +210,36 @@ class BaseRepository
     }
 
 
-    function removeRelatedItem(AbstractEntity $item, AbstractEntity $itemRelated)
+    function removeRelatedItem(AbstractEntity $item, AbstractEntity $itemRelated, $relType)
     {
 
-        delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+        if($relType == AbstractEntity::ONE_TO_ONE)
+        {
+            delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::ONE_TO_MANY)
+        {
+            delete_post_meta($itemRelated->getPost()->ID, $item->getRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::MANY_TO_ONE)
+        {
+            delete_post_meta($item->getPost()->ID, $itemRelated->getRelationMetaKey(), $itemRelated->getId());
+            return;
+        }
+
+        if($relType == AbstractEntity::MANY_TO_MANY)
+        {
+
+
+            delete_post_meta($itemRelated->getPost()->ID, $item->getRelationMetaKey(), $item->getId());
+            return;
+        }
+
+        throw new \Exception("Invalid relation type");
 
     }
 
@@ -280,19 +306,23 @@ class BaseRepository
             if(isset($inversedRelations[$entity_name]))
             {
                 $inversed = true;
+                $type     = $inversedRelations[$entity_name];
 
             }else{
                 throw new \Exception('Relation with "'.$entity_name.'" is not configured');
             }
+        }else{
+            $type = $relations[$entity_name];
         }
 
 
         if($inversed)
         {
-            $this->removeRelatedItem($entityRelated, $entity);
+
+            $this->removeRelatedItem($entityRelated, $entity, $type);
 
         }else{
-            $this->removeRelatedItem($entity, $entityRelated);
+            $this->removeRelatedItem($entity, $entityRelated, $type);
         }
 
 
